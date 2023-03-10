@@ -15,8 +15,8 @@ volatile int updatedisplay = 0;
 // This is the amount of offset between freq (TX freqency) and RXfreq (RX frequency)
 // It will change if you implement RIT. If you do not implement RIT, set it to whatever sidetone you like
 // to listen to.
-volatile uint32_t foffset = 700;   
-volatile uint32_t oldfoffset = 1;        
+volatile int foffset = 700;   
+volatile int oldfoffset = 1;        
 
 volatile uint32_t freq = bandInit;     // this is a variable (changes) - set it to the beginning of the band
 volatile uint32_t RXfreq = freq + foffset;
@@ -78,19 +78,20 @@ void loop()
 {
 
    // Keying the VFO
-  
-  keyState = digitalRead(key);
-  if (keyState == LOW) {
-//    delay(20);                                                              // Optional delay for relay T/R switching.
-    si5351.output_enable(SI5351_CLK2, 0);              // Disable RX Clock to mute 
-   delay(20);                                                               // move delay here  
-    si5351.output_enable(SI5351_CLK0, 1);              // Enable  TX Clock
-    si5351.set_freq((freq * 100ULL), SI5351_CLK0); // Set TX Clock Frequency   
+ 
+  keyState = digitalRead(key);  
+  if (keyState == LOW) {                            // key down?
+    si5351.output_enable(SI5351_CLK0, 0);           // turn off RX CLK for receiver muting
+    delay(20);                                      // optional delay for T/R relay switching                        
+    si5351.output_enable(SI5351_CLK2, 1);           // enable TX clock
+    si5351.set_freq((freq * 100ULL), SI5351_CLK2);  // send TX frequency
+    tone(9,abs(foffset));     // added Sidetone     // enable sidetone; sidetone pitch tracks foffset
   }
-   else {
-    si5351.output_enable(SI5351_CLK0, 0);             // Disable TX Clock
-   delay(20);                                                              // add delay    
-    si5351.output_enable(SI5351_CLK2, 1);             // and enable RX Clock
+   else {                                           // key up?
+    si5351.output_enable(SI5351_CLK2, 0);           // disable TX CLK
+    noTone (9);                                     // disable Sidetone        
+    delay(20);                                      // optional delay for T/R relay switching
+    si5351.output_enable(SI5351_CLK0, 1);           // turn on RX CLK
   }
 
   currentfreq = getfreq();                  // Interrupt safe method to get the current frequency
